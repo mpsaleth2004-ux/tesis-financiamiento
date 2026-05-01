@@ -296,3 +296,153 @@ data_cba = {
         "No hay participación externa en las ganancias",
         "Financiamiento interno, sin intermediarios"
     ],
+"APOR_Ventaja": [
+        "Se elimina completamente el costo financiero, lo que maximiza la utilidad neta",
+        "Flexibilidad en la recuperación del capital, sin presiones externas",
+        "Se evita el endeudamiento, pero se incrementa la exposición financiera total",
+        "Se dispone de liquidez inmediata para iniciar la obra, sin trámites bancarios",
+        "Se pueden reprogramar desembolsos y cronogramas sin depender de terceros",
+        "Se retiene el 100% de la utilidad neta",
+        "Mayor control del proceso y confianza en el cumplimiento"
+    ],
+    "APOR_IdV": [100, 75, 50, 85, 100, 95, 85],
+
+    "FOND_Atributo": [
+        "Rentabilidad exigida entre 18-22%",
+        "Fondos exigen retorno 18-24 meses (fuerte presión)",
+        "Estricto covenants, riesgo si no se cumple objetivo de venta -> riesgo alto",
+        "Inyección inmediata 70-100% del capital requerido (según acuerdo)",
+        "Condiciones negociables caso a caso",
+        "Alta rentabilidad exigida por el inversor",
+        "Cliente no percibe participación directa"
+    ],
+    "FOND_Ventaja": [
+        "Mayor costo financiero",
+        "Presiona flujo de caja; menos margen de maniobra",
+        "Riesgo elevado por compromisos contractuales",
+        "Liquidez inmediata para la obra",
+        "Condiciones negociables caso a caso",
+        "Menor utilidad neta para el promotor",
+        "Menor confianza percibida"
+    ],
+    "FOND_IdV": [40, 50, 40, 80, 80, 50, 60]
+}
+
+df_cba = pd.DataFrame(data_cba)
+
+# Renderizar la tabla editable con configuraciones visuales de columnas
+df_editado = st.data_editor(
+    df_cba,
+    use_container_width=True,
+    hide_index=True,
+    height=320,
+    column_config={
+        "Factor": st.column_config.TextColumn("Factor", width="medium"),
+        "Criterio": st.column_config.TextColumn("Criterio", width="large"),
+        "TRAD_Atributo": st.column_config.TextColumn("Tradicional: Atributo", width="medium"),
+        "TRAD_Ventaja": st.column_config.TextColumn("Tradicional: Ventaja", width="medium"),
+        "TRAD_IdV": st.column_config.NumberColumn("Trad. IdV", min_value=0, max_value=100),
+        "ASOC_Atributo": st.column_config.TextColumn("Asociación: Atributo", width="medium"),
+        "ASOC_Ventaja": st.column_config.TextColumn("Asociación: Ventaja", width="medium"),
+        "ASOC_IdV": st.column_config.NumberColumn("Asoc. IdV", min_value=0, max_value=100),
+        "APOR_Atributo": st.column_config.TextColumn("Aporte Inmob: Atributo", width="medium"),
+        "APOR_Ventaja": st.column_config.TextColumn("Aporte Inmob: Ventaja", width="medium"),
+        "APOR_IdV": st.column_config.NumberColumn("Aporte IdV", min_value=0, max_value=100),
+        "FOND_Atributo": st.column_config.TextColumn("Fondos: Atributo", width="medium"),
+        "FOND_Ventaja": st.column_config.TextColumn("Fondos: Ventaja", width="medium"),
+        "FOND_IdV": st.column_config.NumberColumn("Fondos IdV", min_value=0, max_value=100)
+    }
+)
+
+# Cálculo dinámico en tiempo real de los totales IdV
+totales_idv = {
+    "Crédito Bancario Tradicional": df_editado["TRAD_IdV"].sum(),
+    "Asociación con Propietarios": df_editado["ASOC_IdV"].sum(),
+    "Aporte Inmobiliario": df_editado["APOR_IdV"].sum(),
+    "Fondos de Inversión": df_editado["FOND_IdV"].sum()
+}
+
+alternativa_ganadora = max(totales_idv, key=totales_idv.get)
+puntaje_cba = totales_idv[alternativa_ganadora]
+
+# Mostrar métricas de puntaje total debajo de la tabla
+st.markdown("### Totales IdV en tiempo real")
+col_t1, col_t2, col_t3, col_t4 = st.columns(4)
+col_t1.metric("Crédito Bancario", totales_idv["Crédito Bancario Tradicional"])
+col_t2.metric("Asociación con Propietarios", totales_idv["Asociación con Propietarios"])
+col_t3.metric("Aporte Inmobiliario", totales_idv["Aporte Inmobiliario"])
+col_t4.metric("Fondos de Inversión", totales_idv["Fondos de Inversión"])
+
+st.divider()
+
+# -----------------------------
+# Satisfacción
+# -----------------------------
+
+st.header("6. Satisfacción del cliente")
+satisfaccion = st.slider("Nivel de satisfacción del cliente esperado", 1.0, 5.0, 4.0, step=0.1)
+
+st.divider()
+
+# -----------------------------
+# Resultados
+# -----------------------------
+
+st.header("7. Resultados del análisis")
+
+if st.button("Calcular resultados"):
+    if suma_financiamiento != 100:
+        st.error("Corrige la distribución del financiamiento antes de calcular.")
+    else:
+        van = calcular_van(tasa_descuento_mensual, flujos)
+        tir_mensual = calcular_tir(flujos)
+        tir_anual = ((1 + tir_mensual) ** 12 - 1) if tir_mensual is not None else None
+
+        estado, recomendacion = interpretar_resultado(van, tir_mensual, rentabilidad, satisfaccion, puntaje_cba)
+
+        r1, r2, r3, r4 = st.columns(4)
+
+        with r1:
+            st.metric("VAN", f"S/. {van:,.2f}")
+        with r2:
+            if tir_anual is not None:
+                st.metric("TIR anual", f"{tir_anual * 100:.2f}%")
+            else:
+                st.metric("TIR anual", "No calculable")
+        with r3:
+            st.metric("Rentabilidad", f"{rentabilidad:.2f}%")
+        with r4:
+            st.metric("Satisfacción", f"{satisfaccion:.1f}/5")
+
+        st.subheader("Resultado CBA")
+        st.write(f"Alternativa ganadora: **{alternativa_ganadora}**")
+        st.write(f"Puntaje CBA obtenido: **{puntaje_cba:.0f} puntos IdV**")
+
+        st.subheader("Recomendación final")
+        if estado == "Viable y recomendable":
+            st.success(f"✅ {estado}")
+        elif estado == "Viable con observaciones":
+            st.warning(f"⚠️ {estado}")
+        else:
+            st.error(f"❌ {estado}")
+
+        st.write(recomendacion)
+
+        if tir_anual is not None:
+            tir_texto = f"{tir_anual * 100:.2f}%"
+        else:
+            tir_texto = "no calculable"
+
+        st.markdown(
+            f"""
+            **Interpretación:** Para el proyecto **{nombre_proyecto}**, ubicado en **{ubicacion}**, la aplicación del método CBA identifica como alternativa más conveniente a **{alternativa_ganadora}**, 
+            con un puntaje de **{puntaje_cba:.0f} puntos IdV**. Asimismo, el análisis financiero del **{metodo}** obtiene un VAN de **S/. {van:,.2f}**, 
+            una TIR anual de **{tir_texto}**, una rentabilidad de **{rentabilidad:.2f}%** y una satisfacción esperada de **{satisfaccion:.1f}/5**.
+            """
+        )
+
+st.divider()
+st.caption(
+    "Nota: Este prototipo es una herramienta de apoyo a la toma de decisiones. "
+    "Los resultados dependen de los datos ingresados por el usuario y deben interpretarse junto con el análisis técnico-financiero del proyecto."
+)
