@@ -24,8 +24,8 @@ def calcular_van(tasa_mensual, flujos):
         van += flujo / ((1 + tasa_mensual) ** i)
     return van
 
-
 def calcular_tir(flujos):
+    # Nota: Para mayor precisión en producción se recomienda usar numpy_financial.irr()
     tasas = np.linspace(-0.99, 1.5, 20000)
     valores = [calcular_van(tasa, flujos) for tasa in tasas]
 
@@ -35,7 +35,6 @@ def calcular_tir(flujos):
         if valores[i] * valores[i + 1] < 0:
             return tasas[i]
     return None
-
 
 def interpretar_resultado(van, tir_mensual, rentabilidad, satisfaccion, puntaje_cba):
     tir_anual = ((1 + tir_mensual) ** 12 - 1) if tir_mensual is not None else None
@@ -222,216 +221,77 @@ for i in range(1, horizonte_meses + 1):
 st.divider()
 
 # -----------------------------
-# Tabla de CBA
+# 5. Tabla de CBA (Editable y Dinámica)
 # -----------------------------
 
-st.header("Tabla de CBA")
+st.header("5. Aplicación del Método CBA (Tabular)")
+st.markdown("Puedes editar los textos y los puntajes (IdV) haciendo doble clic en cualquier celda de la tabla.")
 
-st.markdown("""
-<style>
-.table-container {
-    width: 100%;
-    overflow-x: auto;
-}
-.cba {
-    border-collapse: collapse;
-    width: 100%;
-    font-family: Arial, sans-serif;
-    font-size: 11px;
-}
-.cba th, .cba td {
-    border: 1px solid black;
-    padding: 6px;
-    text-align: center;
-}
-.header1 {
-    background-color: #d9e1f2;
-    font-weight: bold;
-}
-.header2 {
-    background-color: #d9e1f2;
-    font-weight: bold;
-}
-.factor {
-    background-color: #d9e1f2;
-    text-align: left;
-    font-weight: bold;
-}
-.black {
-    background-color: black;
-}
-.total-label {
-    background-color: #8eaadb;
-    color: white;
-    text-align: right;
-    font-weight: bold;
-}
-.total {
-    background-color: #8eaadb;
-    color: white;
-    font-weight: bold;
-}
-</style>
+# Transcripción exacta de la matriz CBA
+data_cba = {
+    "Factor": [
+        "F01: Tasa de interés / costo financiero",
+        "F02: Plazo de retorno / plazo del crédito",
+        "F03: Riesgo financiero",
+        "F04: Liquidez / entrada inicial",
+        "F05: Flexibilidad de condiciones",
+        "F06: Rentabilidad esperada / retención de utilidades",
+        "F07: Impacto en la satisfacción del cliente"
+    ],
+    "Criterio": [
+        "Mientras menor sea la tasa efectiva anual y más estable la modalidad, mejor",
+        "Mientras menor sea el plazo sin afectar el flujo de caja, mejor",
+        "Mientras menor sea la exposición a inflación, impago y variabilidad de tasas, mejor",
+        "Mientras menor sea el porcentaje de entrada y mayor la flexibilidad de acceso, mejor",
+        "Mientras mayor sea la capacidad de renegociar plazos, pagos y garantías, mejor",
+        "Mientras mayor sea el margen neto proyectado y la capacidad de reinversión, mejor",
+        "Mientras mayor sea la claridad de condiciones y percepción de seguridad, mejor"
+    ],
+    "TRAD_Atributo": [
+        "Tasa efectiva anual 10.5% fija",
+        "Plazo de 24 meses, ajustado al ciclo constructivo",
+        "Riesgo controlado (garantías hipotecarias, ratio DSCR exigido = 1.2-1.3)",
+        "Aporte inicial del 30%",
+        "Condiciones contractuales bajas renegociables; comisiones por modificación (~1-2%)",
+        "Bajo costo financiero (10.5%)",
+        "Respaldado por institución reconocida"
+    ],
+    "TRAD_Ventaja": [
+        "Tasa relativamente baja y previsible",
+        "Permite flujo estable y recuperación sincronizada con ventas",
+        "Riesgo controlado gracias a supervisión bancaria",
+        "Acceso rápido al financiamiento tras preventas",
+        "Menor flexibilidad ante imprevistos",
+        "Mayor margen de utilidad neta",
+        "Alta confianza del cliente"
+    ],
+    "TRAD_IdV": [80, 80, 70, 70, 50, 90, 90],
+    
+    "ASOC_Atributo": [
+        "Interés 0%, pero cesión ≈ 20% del proyecto",
+        "Retorno ligado a ventas (plazo indefinido / >24 meses)",
+        "Riesgo financiero bajo (sin deuda, reparto de utilidades)",
+        "Aporte propio ~0-10% (terreno aportado como capital)",
+        "Contrato privado, cláusulas negociables (alta flexibilidad)",
+        "Cesión del 20% del proyecto",
+        "Dependiente de la gestión del promotor"
+    ],
+    "ASOC_Ventaja": [
+        "Elimina costo financiero directo",
+        "No hay presión de pago, pero retorno más largo",
+        "Riesgo bajo; no hay intereses ni pagos fijos",
+        "No requiere gran desembolso inicial",
+        "Alta capacidad de renegociación",
+        "Rentabilidad media, pero sin deuda",
+        "Percepción media de seguridad"
+    ],
+    "ASOC_IdV": [100, 60, 90, 90, 90, 70, 70],
 
-<div class="table-container">
-<table class="cba">
-<tr class="header1">
-    <th colspan="2">APLICACIÓN DEL MÉTODO CBA (TABULAR)</th>
-    <th colspan="8">ALTERNATIVAS</th>
-</tr>
-<tr class="header2">
-    <th colspan="2">INFORMACIÓN GENERAL</th>
-    <th>CRÉDITO BANCARIO TRADICIONAL</th><th>IdV</th>
-    <th>ASOCIACIÓN CON PROPIETARIOS</th><th>IdV</th>
-    <th>APORTE INMOBILIARIO</th><th>IdV</th>
-    <th>FONDOS DE INVERSIÓN</th><th>IdV</th>
-</tr>
-
-<tr>
-<td colspan="2" class="factor">FACTOR 01: Tasa de interés / costo financiero</td>
-<td class="black"></td><td class="black"></td>
-<td class="black"></td><td class="black"></td>
-<td class="black"></td><td class="black"></td>
-<td class="black"></td><td class="black"></td>
-</tr>
-
-<tr>
-<td colspan="2" class="factor">FACTOR 02: Plazo de retorno / plazo del crédito</td>
-<td class="black"></td><td class="black"></td>
-<td class="black"></td><td class="black"></td>
-<td class="black"></td><td class="black"></td>
-<td class="black"></td><td class="black"></td>
-</tr>
-
-<tr>
-<td colspan="2" class="factor">FACTOR 03: Riesgo financiero</td>
-<td class="black"></td><td class="black"></td>
-<td class="black"></td><td class="black"></td>
-<td class="black"></td><td class="black"></td>
-<td class="black"></td><td class="black"></td>
-</tr>
-
-<tr>
-<td colspan="2" class="factor">FACTOR 04: Liquidez / entrada inicial</td>
-<td class="black"></td><td class="black"></td>
-<td class="black"></td><td class="black"></td>
-<td class="black"></td><td class="black"></td>
-<td class="black"></td><td class="black"></td>
-</tr>
-
-<tr>
-<td colspan="2" class="factor">FACTOR 05: Flexibilidad de condiciones</td>
-<td class="black"></td><td class="black"></td>
-<td class="black"></td><td class="black"></td>
-<td class="black"></td><td class="black"></td>
-<td class="black"></td><td class="black"></td>
-</tr>
-
-<tr>
-<td colspan="2" class="factor">FACTOR 06: Rentabilidad esperada / retención de utilidades</td>
-<td class="black"></td><td class="black"></td>
-<td class="black"></td><td class="black"></td>
-<td class="black"></td><td class="black"></td>
-<td class="black"></td><td class="black"></td>
-</tr>
-
-<tr>
-<td colspan="2" class="factor">FACTOR 07: Impacto en la satisfacción del cliente</td>
-<td class="black"></td><td class="black"></td>
-<td class="black"></td><td class="black"></td>
-<td class="black"></td><td class="black"></td>
-<td class="black"></td><td class="black"></td>
-</tr>
-
-<tr>
-<td colspan="2" class="total-label">IdV TOTAL</td>
-<td class="black"></td><td class="total">530</td>
-<td class="black"></td><td class="total">570</td>
-<td class="black"></td><td class="total">590</td>
-<td class="black"></td><td class="total">400</td>
-</tr>
-
-</table>
-</div>
-""", unsafe_allow_html=True)
-
-# valores fijos para no romper el resto del código
-puntaje_cba = 590
-alternativa_ganadora = "Aporte inmobiliario"
-puntaje_cba = 590
-alternativa_ganadora = "Aporte inmobiliario"
-
-st.divider()
-
-# -----------------------------
-# Satisfacción
-# -----------------------------
-
-st.header("6. Satisfacción del cliente")
-satisfaccion = st.slider("Nivel de satisfacción del cliente esperado", 1.0, 5.0, 4.0, step=0.1)
-
-st.divider()
-
-# -----------------------------
-# Resultados
-# -----------------------------
-
-st.header("7. Resultados del análisis")
-
-if st.button("Calcular resultados"):
-    if suma_financiamiento != 100:
-        st.error("Corrige la distribución del financiamiento antes de calcular.")
-    else:
-        van = calcular_van(tasa_descuento_mensual, flujos)
-        tir_mensual = calcular_tir(flujos)
-        tir_anual = ((1 + tir_mensual) ** 12 - 1) if tir_mensual is not None else None
-
-        estado, recomendacion = interpretar_resultado(van, tir_mensual, rentabilidad, satisfaccion, puntaje_cba)
-
-        r1, r2, r3, r4 = st.columns(4)
-
-        with r1:
-            st.metric("VAN", f"S/. {van:,.2f}")
-        with r2:
-            if tir_anual is not None:
-                st.metric("TIR anual", f"{tir_anual * 100:.2f}%")
-            else:
-                st.metric("TIR anual", "No calculable")
-        with r3:
-            st.metric("Rentabilidad", f"{rentabilidad:.2f}%")
-        with r4:
-            st.metric("Satisfacción", f"{satisfaccion:.1f}/5")
-
-        st.subheader("Resultado CBA")
-        st.write(f"Alternativa ganadora: **{alternativa_ganadora}**")
-        st.write(f"Puntaje CBA obtenido: **{puntaje_cba:.0f} puntos IdV**")
-
-        st.subheader("Recomendación final")
-        if estado == "Viable y recomendable":
-            st.success(f"✅ {estado}")
-        elif estado == "Viable con observaciones":
-            st.warning(f"⚠️ {estado}")
-        else:
-            st.error(f"❌ {estado}")
-
-        st.write(recomendacion)
-
-        if tir_anual is not None:
-            tir_texto = f"{tir_anual * 100:.2f}%"
-        else:
-            tir_texto = "no calculable"
-
-        st.markdown(
-            f"""
-            **Interpretación:**  
-            Para el proyecto **{nombre_proyecto}**, ubicado en **{ubicacion}**, la aplicación del método CBA identifica como alternativa más conveniente a **{alternativa_ganadora}**, 
-            con un puntaje de **{puntaje_cba:.0f} puntos IdV**. Asimismo, el análisis financiero del **{metodo}** obtiene un VAN de **S/. {van:,.2f}**, 
-            una TIR anual de **{tir_texto}**, una rentabilidad de **{rentabilidad:.2f}%** y una satisfacción esperada de **{satisfaccion:.1f}/5**.
-            """
-        )
-
-st.divider()
-st.caption(
-    "Nota: Este prototipo es una herramienta de apoyo a la toma de decisiones. "
-    "Los resultados dependen de los datos ingresados por el usuario y deben interpretarse junto con el análisis técnico-financiero del proyecto."
-)
+    "APOR_Atributo": [
+        "Interés 0%, requiere preventa ≥ 30-50% para liquidez",
+        "Venta/entrega escalonada -> parte del ingreso en 12-24 meses",
+        "Riesgo dependiente de venta (porcentaje vendido p.ej. 30-50%)",
+        "Entradas de clientes: 30% del precio como reserva/anticipo",
+        "Flexibilidad media (acuerdos con compradores)",
+        "No hay participación externa en las ganancias",
+        "Financiamiento interno, sin intermediarios
