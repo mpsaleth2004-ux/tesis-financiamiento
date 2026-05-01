@@ -1,5 +1,6 @@
 import streamlit as st
 import numpy as np
+import pandas as pd
 
 # ============================================================
 # PROTOTIPO WEB PARA EVALUACIÓN DE FINANCIAMIENTO INMOBILIARIO
@@ -79,7 +80,8 @@ with col2:
     tasa_descuento_anual = st.number_input("Tasa de descuento anual (%)", min_value=0.0, value=12.0, step=0.5) / 100
     inversion_inicial = st.number_input("Inversión inicial / desembolso inicial (S/.)", min_value=0.0, value=3000000.0, step=100000.0)
 
-# conversión de tasa anual a mensual
+st.subheader(f"Proyecto evaluado: {nombre_proyecto}")
+
 tasa_descuento_mensual = (1 + tasa_descuento_anual) ** (1 / 12) - 1
 
 st.divider()
@@ -220,26 +222,80 @@ for i in range(1, horizonte_meses + 1):
 st.divider()
 
 # -----------------------------
-# CBA y satisfacción
+# Matriz CBA
 # -----------------------------
 
-st.header("5. Evaluación CBA y satisfacción del cliente")
+st.header(f"5. Aplicación del método CBA - {nombre_proyecto}")
+st.markdown("Ingrese los puntajes IdV para cada alternativa según los factores de decisión.")
 
-st.markdown("Asigne un puntaje de 0 a 100 a cada criterio, según las ventajas de la alternativa evaluada.")
+factores = [
+    "Tasa de interés / costo financiero",
+    "Plazo de retorno / plazo del crédito",
+    "Riesgo financiero",
+    "Liquidez / entrada inicial",
+    "Flexibilidad de condiciones",
+    "Rentabilidad esperada / retención de utilidades",
+    "Impacto en la satisfacción del cliente"
+]
 
-col12, col13, col14, col15 = st.columns(4)
+alternativas = [
+    "Crédito bancario tradicional",
+    "Asociación con propietarios",
+    "Preventa de unidades inmobiliarias",
+    "Inversión de capital privado / fondos"
+]
 
-with col12:
-    cba_rentabilidad = st.slider("Ventaja en rentabilidad", 0, 100, 80)
-with col13:
-    cba_riesgo = st.slider("Ventaja en menor riesgo", 0, 100, 70)
-with col14:
-    cba_tiempo = st.slider("Ventaja en tiempo", 0, 100, 75)
-with col15:
-    cba_acceso = st.slider("Ventaja en acceso al financiamiento", 0, 100, 85)
+valores_default = {
+    "Crédito bancario tradicional": [12, 10, 8, 10, 7, 10, 8],
+    "Asociación con propietarios": [15, 14, 13, 18, 16, 14, 15],
+    "Preventa de unidades inmobiliarias": [18, 17, 15, 20, 15, 17, 18],
+    "Inversión de capital privado / fondos": [14, 13, 12, 15, 18, 16, 14]
+}
 
-puntaje_cba = (cba_rentabilidad + cba_riesgo + cba_tiempo + cba_acceso) / 4
+puntajes_cba = {}
 
+for alternativa in alternativas:
+    st.subheader(alternativa)
+    puntajes = []
+    cols = st.columns(7)
+    for i, factor in enumerate(factores):
+        with cols[i]:
+            valor = st.number_input(
+                factor,
+                min_value=0,
+                max_value=100,
+                value=valores_default[alternativa][i],
+                key=f"{alternativa}_{i}"
+            )
+            puntajes.append(valor)
+    puntajes_cba[alternativa] = puntajes
+
+# Tabla CBA
+df_cba = pd.DataFrame(puntajes_cba, index=factores)
+df_cba.loc["IdV TOTAL"] = df_cba.sum(axis=0)
+
+st.subheader("Tabla de resultados CBA")
+st.dataframe(df_cba, use_container_width=True)
+
+# Gráfico CBA
+df_grafico = df_cba.loc[["IdV TOTAL"]].T
+df_grafico.columns = ["Puntaje IdV"]
+
+st.subheader("Gráfico de puntajes IdV por alternativa")
+st.bar_chart(df_grafico)
+
+alternativa_ganadora = df_grafico["Puntaje IdV"].idxmax()
+puntaje_cba = df_grafico["Puntaje IdV"].max()
+
+st.success(f"Alternativa ganadora según CBA: {alternativa_ganadora} con {puntaje_cba:.0f} puntos IdV.")
+
+st.divider()
+
+# -----------------------------
+# Satisfacción
+# -----------------------------
+
+st.header("6. Satisfacción del cliente")
 satisfaccion = st.slider("Nivel de satisfacción del cliente esperado", 1.0, 5.0, 4.0, step=0.1)
 
 st.divider()
@@ -248,7 +304,7 @@ st.divider()
 # Resultados
 # -----------------------------
 
-st.header("6. Resultados del análisis")
+st.header("7. Resultados del análisis")
 
 if st.button("Calcular resultados"):
     if suma_financiamiento != 100:
@@ -275,8 +331,8 @@ if st.button("Calcular resultados"):
             st.metric("Satisfacción", f"{satisfaccion:.1f}/5")
 
         st.subheader("Resultado CBA")
-        st.progress(int(puntaje_cba))
-        st.write(f"Puntaje CBA obtenido: **{puntaje_cba:.2f}/100**")
+        st.write(f"Alternativa ganadora: **{alternativa_ganadora}**")
+        st.write(f"Puntaje CBA obtenido: **{puntaje_cba:.0f} puntos IdV**")
 
         st.subheader("Recomendación final")
         if estado == "Viable y recomendable":
@@ -296,10 +352,9 @@ if st.button("Calcular resultados"):
         st.markdown(
             f"""
             **Interpretación:**  
-            Aplicando el **{metodo}** en el proyecto **{nombre_proyecto}**, ubicado en **{ubicacion}**, 
-            se obtiene un VAN de **S/. {van:,.2f}**, una TIR anual de **{tir_texto}**, 
-            una rentabilidad de **{rentabilidad:.2f}%**, una satisfacción esperada de **{satisfaccion:.1f}/5** 
-            y un puntaje CBA de **{puntaje_cba:.2f}/100**.
+            Para el proyecto **{nombre_proyecto}**, ubicado en **{ubicacion}**, la aplicación del método CBA identifica como alternativa más conveniente a **{alternativa_ganadora}**, 
+            con un puntaje de **{puntaje_cba:.0f} puntos IdV**. Asimismo, el análisis financiero del **{metodo}** obtiene un VAN de **S/. {van:,.2f}**, 
+            una TIR anual de **{tir_texto}**, una rentabilidad de **{rentabilidad:.2f}%** y una satisfacción esperada de **{satisfaccion:.1f}/5**.
             """
         )
 
@@ -308,3 +363,4 @@ st.caption(
     "Nota: Este prototipo es una herramienta de apoyo a la toma de decisiones. "
     "Los resultados dependen de los datos ingresados por el usuario y deben interpretarse junto con el análisis técnico-financiero del proyecto."
 )
+
