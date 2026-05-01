@@ -222,74 +222,144 @@ for i in range(1, horizonte_meses + 1):
 st.divider()
 
 # -----------------------------
-# Matriz CBA
+# Tabla de CBA
 # -----------------------------
 
-st.header(f"5. Aplicación del método CBA - {nombre_proyecto}")
-st.markdown("Complete los puntajes IdV en la tabla. Cada valor representa la importancia de la ventaja de cada alternativa.")
+st.header("Tabla de CBA")
 
-factores = [
-    "FACTOR 01: Tasa de interés / costo financiero",
-    "FACTOR 02: Plazo de retorno / plazo del crédito",
-    "FACTOR 03: Riesgo financiero",
-    "FACTOR 04: Liquidez / entrada inicial",
-    "FACTOR 05: Flexibilidad de condiciones",
-    "FACTOR 06: Rentabilidad esperada / retención de utilidades",
-    "FACTOR 07: Impacto en la satisfacción del cliente"
-]
+st.markdown("""
+<style>
+.table-container {
+    width: 100%;
+    overflow-x: auto;
+}
+.cba {
+    border-collapse: collapse;
+    width: 100%;
+    font-family: Arial, sans-serif;
+    font-size: 11px;
+}
+.cba th, .cba td {
+    border: 1px solid black;
+    padding: 6px;
+    text-align: center;
+}
+.header1 {
+    background-color: #d9e1f2;
+    font-weight: bold;
+}
+.header2 {
+    background-color: #d9e1f2;
+    font-weight: bold;
+}
+.factor {
+    background-color: #d9e1f2;
+    text-align: left;
+    font-weight: bold;
+}
+.black {
+    background-color: black;
+}
+.total-label {
+    background-color: #8eaadb;
+    color: white;
+    text-align: right;
+    font-weight: bold;
+}
+.total {
+    background-color: #8eaadb;
+    color: white;
+    font-weight: bold;
+}
+</style>
 
-alternativas = [
-    "Crédito bancario tradicional",
-    "Asociación con propietarios",
-    "Aporte inmobiliario",
-    "Fondos de inversión"
-]
+<div class="table-container">
+<table class="cba">
+<tr class="header1">
+    <th colspan="2">APLICACIÓN DEL MÉTODO CBA (TABULAR)</th>
+    <th colspan="8">ALTERNATIVAS</th>
+</tr>
+<tr class="header2">
+    <th colspan="2">INFORMACIÓN GENERAL</th>
+    <th>CRÉDITO BANCARIO TRADICIONAL</th><th>IdV</th>
+    <th>ASOCIACIÓN CON PROPIETARIOS</th><th>IdV</th>
+    <th>APORTE INMOBILIARIO</th><th>IdV</th>
+    <th>FONDOS DE INVERSIÓN</th><th>IdV</th>
+</tr>
 
-# Valores iniciales similares al formato de tesis
-valores_iniciales = pd.DataFrame({
-    "Información general": factores,
-    "Crédito bancario tradicional": [80, 70, 60, 90, 70, 80, 80],
-    "Asociación con propietarios": [90, 80, 80, 80, 80, 80, 80],
-    "Aporte inmobiliario": [95, 85, 85, 85, 80, 90, 70],
-    "Fondos de inversión": [60, 60, 50, 60, 70, 50, 50]
-})
+<tr>
+<td colspan="2" class="factor">FACTOR 01: Tasa de interés / costo financiero</td>
+<td class="black"></td><td class="black"></td>
+<td class="black"></td><td class="black"></td>
+<td class="black"></td><td class="black"></td>
+<td class="black"></td><td class="black"></td>
+</tr>
 
-st.subheader("Tabla CBA editable")
+<tr>
+<td colspan="2" class="factor">FACTOR 02: Plazo de retorno / plazo del crédito</td>
+<td class="black"></td><td class="black"></td>
+<td class="black"></td><td class="black"></td>
+<td class="black"></td><td class="black"></td>
+<td class="black"></td><td class="black"></td>
+</tr>
 
-df_cba_editado = st.data_editor(
-    valores_iniciales,
-    use_container_width=True,
-    hide_index=True,
-    disabled=["Información general"],
-    column_config={
-        "Información general": st.column_config.TextColumn("Información general", width="large"),
-        "Crédito bancario tradicional": st.column_config.NumberColumn("Crédito bancario tradicional - IdV", min_value=0, max_value=1000, step=10),
-        "Asociación con propietarios": st.column_config.NumberColumn("Asociación con propietarios - IdV", min_value=0, max_value=1000, step=10),
-        "Aporte inmobiliario": st.column_config.NumberColumn("Aporte inmobiliario - IdV", min_value=0, max_value=1000, step=10),
-        "Fondos de inversión": st.column_config.NumberColumn("Fondos de inversión - IdV", min_value=0, max_value=1000, step=10),
-    }
-)
+<tr>
+<td colspan="2" class="factor">FACTOR 03: Riesgo financiero</td>
+<td class="black"></td><td class="black"></td>
+<td class="black"></td><td class="black"></td>
+<td class="black"></td><td class="black"></td>
+<td class="black"></td><td class="black"></td>
+</tr>
 
-# Cálculo de IdV total
-idv_totales = {}
-for alt in alternativas:
-    idv_totales[alt] = df_cba_editado[alt].sum()
+<tr>
+<td colspan="2" class="factor">FACTOR 04: Liquidez / entrada inicial</td>
+<td class="black"></td><td class="black"></td>
+<td class="black"></td><td class="black"></td>
+<td class="black"></td><td class="black"></td>
+<td class="black"></td><td class="black"></td>
+</tr>
 
-fila_total = pd.DataFrame({
-    "Alternativa": list(idv_totales.keys()),
-    "IdV TOTAL": list(idv_totales.values())
-})
+<tr>
+<td colspan="2" class="factor">FACTOR 05: Flexibilidad de condiciones</td>
+<td class="black"></td><td class="black"></td>
+<td class="black"></td><td class="black"></td>
+<td class="black"></td><td class="black"></td>
+<td class="black"></td><td class="black"></td>
+</tr>
 
-st.subheader("IdV total por alternativa")
-st.dataframe(fila_total, use_container_width=True, hide_index=True)
+<tr>
+<td colspan="2" class="factor">FACTOR 06: Rentabilidad esperada / retención de utilidades</td>
+<td class="black"></td><td class="black"></td>
+<td class="black"></td><td class="black"></td>
+<td class="black"></td><td class="black"></td>
+<td class="black"></td><td class="black"></td>
+</tr>
 
-st.subheader("Gráfico de puntajes IdV")
-st.bar_chart(fila_total.set_index("Alternativa"))
+<tr>
+<td colspan="2" class="factor">FACTOR 07: Impacto en la satisfacción del cliente</td>
+<td class="black"></td><td class="black"></td>
+<td class="black"></td><td class="black"></td>
+<td class="black"></td><td class="black"></td>
+<td class="black"></td><td class="black"></td>
+</tr>
 
-alternativa_ganadora = max(idv_totales, key=idv_totales.get)
-puntaje_cba = idv_totales[alternativa_ganadora]
+<tr>
+<td colspan="2" class="total-label">IdV TOTAL</td>
+<td class="black"></td><td class="total">530</td>
+<td class="black"></td><td class="total">570</td>
+<td class="black"></td><td class="total">590</td>
+<td class="black"></td><td class="total">400</td>
+</tr>
 
-st.success(f"Alternativa ganadora según CBA: {alternativa_ganadora} con {puntaje_cba:.0f} puntos IdV.")
+</table>
+</div>
+""", unsafe_allow_html=True)
+
+# valores fijos para no romper el resto del código
+puntaje_cba = 590
+alternativa_ganadora = "Aporte inmobiliario"
+puntaje_cba = 590
+alternativa_ganadora = "Aporte inmobiliario"
 
 st.divider()
 
