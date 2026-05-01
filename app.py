@@ -344,9 +344,22 @@ filas_cba = [
 
 df_cba = pd.DataFrame(filas_cba)
 
-# Renderizar la tabla editable
+# Lógica dinámica para mostrar columnas según el método seleccionado
+columnas_base = ["Descripción / Información"]
+
+if metodo == "Método 1: Tradicional":
+    columnas_mostrar = ["Crédito Bancario", "Trad. IdV", "Aporte Inmob.", "Apor. IdV"]
+elif metodo == "Método 2: Aporte mixto":
+    columnas_mostrar = ["Crédito Bancario", "Trad. IdV", "Asociación", "Asoc. IdV", "Aporte Inmob.", "Apor. IdV", "Fondos Invers.", "Fond. IdV"]
+else: # Método 3: Financiamiento con inversionistas
+    columnas_mostrar = ["Crédito Bancario", "Trad. IdV", "Aporte Inmob.", "Apor. IdV", "Fondos Invers.", "Fond. IdV"]
+
+# Filtramos el DataFrame para que solo contenga las columnas que necesitamos ver
+df_cba_visible = df_cba[columnas_base + columnas_mostrar]
+
+# Renderizar la tabla editable solo con las columnas filtradas
 df_editado = st.data_editor(
-    df_cba,
+    df_cba_visible,
     use_container_width=True,
     hide_index=True,
     height=550, 
@@ -363,24 +376,25 @@ df_editado = st.data_editor(
     }
 )
 
-# Cálculo dinámico en tiempo real de los totales IdV
-totales_idv = {
-    "Crédito Bancario Tradicional": df_editado["Trad. IdV"].sum(),
-    "Asociación con Propietarios": df_editado["Asoc. IdV"].sum(),
-    "Aporte Inmobiliario": df_editado["Apor. IdV"].sum(),
-    "Fondos de Inversión": df_editado["Fond. IdV"].sum()
-}
+# Cálculo dinámico en tiempo real de los totales IdV asegurando que la columna exista
+totales_idv = {}
+if "Trad. IdV" in df_editado.columns:
+    totales_idv["Crédito Bancario"] = df_editado["Trad. IdV"].sum()
+if "Asoc. IdV" in df_editado.columns:
+    totales_idv["Asociación"] = df_editado["Asoc. IdV"].sum()
+if "Apor. IdV" in df_editado.columns:
+    totales_idv["Aporte Inmobiliario"] = df_editado["Apor. IdV"].sum()
+if "Fond. IdV" in df_editado.columns:
+    totales_idv["Fondos de Inversión"] = df_editado["Fond. IdV"].sum()
 
 alternativa_ganadora = max(totales_idv, key=totales_idv.get)
 puntaje_cba = totales_idv[alternativa_ganadora]
 
-# Mostrar métricas de puntaje total debajo de la tabla
+# Mostrar métricas de puntaje total debajo de la tabla adaptándose al número de métodos evaluados
 st.markdown("### Totales IdV en tiempo real")
-col_t1, col_t2, col_t3, col_t4 = st.columns(4)
-col_t1.metric("Crédito Bancario", totales_idv["Crédito Bancario Tradicional"])
-col_t2.metric("Asociación con Propietarios", totales_idv["Asociación con Propietarios"])
-col_t3.metric("Aporte Inmobiliario", totales_idv["Aporte Inmobiliario"])
-col_t4.metric("Fondos de Inversión", totales_idv["Fondos de Inversión"])
+columnas_metricas = st.columns(len(totales_idv))
+for i, (nombre_alt, valor_idv) in enumerate(totales_idv.items()):
+    columnas_metricas[i].metric(nombre_alt, valor_idv)
 
 st.divider()
 
