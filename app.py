@@ -226,66 +226,68 @@ st.divider()
 # -----------------------------
 
 st.header(f"5. Aplicación del método CBA - {nombre_proyecto}")
-st.markdown("Ingrese los puntajes IdV para cada alternativa según los factores de decisión.")
+st.markdown("Complete los puntajes IdV en la tabla. Cada valor representa la importancia de la ventaja de cada alternativa.")
 
 factores = [
-    "Tasa de interés / costo financiero",
-    "Plazo de retorno / plazo del crédito",
-    "Riesgo financiero",
-    "Liquidez / entrada inicial",
-    "Flexibilidad de condiciones",
-    "Rentabilidad esperada / retención de utilidades",
-    "Impacto en la satisfacción del cliente"
+    "FACTOR 01: Tasa de interés / costo financiero",
+    "FACTOR 02: Plazo de retorno / plazo del crédito",
+    "FACTOR 03: Riesgo financiero",
+    "FACTOR 04: Liquidez / entrada inicial",
+    "FACTOR 05: Flexibilidad de condiciones",
+    "FACTOR 06: Rentabilidad esperada / retención de utilidades",
+    "FACTOR 07: Impacto en la satisfacción del cliente"
 ]
 
 alternativas = [
     "Crédito bancario tradicional",
     "Asociación con propietarios",
-    "Preventa de unidades inmobiliarias",
-    "Inversión de capital privado / fondos"
+    "Aporte inmobiliario",
+    "Fondos de inversión"
 ]
 
-valores_default = {
-    "Crédito bancario tradicional": [12, 10, 8, 10, 7, 10, 8],
-    "Asociación con propietarios": [15, 14, 13, 18, 16, 14, 15],
-    "Preventa de unidades inmobiliarias": [18, 17, 15, 20, 15, 17, 18],
-    "Inversión de capital privado / fondos": [14, 13, 12, 15, 18, 16, 14]
-}
+# Valores iniciales similares al formato de tesis
+valores_iniciales = pd.DataFrame({
+    "Información general": factores,
+    "Crédito bancario tradicional": [80, 70, 60, 90, 70, 80, 80],
+    "Asociación con propietarios": [90, 80, 80, 80, 80, 80, 80],
+    "Aporte inmobiliario": [95, 85, 85, 85, 80, 90, 70],
+    "Fondos de inversión": [60, 60, 50, 60, 70, 50, 50]
+})
 
-puntajes_cba = {}
+st.subheader("Tabla CBA editable")
 
-for alternativa in alternativas:
-    st.subheader(alternativa)
-    puntajes = []
-    cols = st.columns(7)
-    for i, factor in enumerate(factores):
-        with cols[i]:
-            valor = st.number_input(
-                factor,
-                min_value=0,
-                max_value=100,
-                value=valores_default[alternativa][i],
-                key=f"{alternativa}_{i}"
-            )
-            puntajes.append(valor)
-    puntajes_cba[alternativa] = puntajes
+df_cba_editado = st.data_editor(
+    valores_iniciales,
+    use_container_width=True,
+    hide_index=True,
+    disabled=["Información general"],
+    column_config={
+        "Información general": st.column_config.TextColumn("Información general", width="large"),
+        "Crédito bancario tradicional": st.column_config.NumberColumn("Crédito bancario tradicional - IdV", min_value=0, max_value=1000, step=10),
+        "Asociación con propietarios": st.column_config.NumberColumn("Asociación con propietarios - IdV", min_value=0, max_value=1000, step=10),
+        "Aporte inmobiliario": st.column_config.NumberColumn("Aporte inmobiliario - IdV", min_value=0, max_value=1000, step=10),
+        "Fondos de inversión": st.column_config.NumberColumn("Fondos de inversión - IdV", min_value=0, max_value=1000, step=10),
+    }
+)
 
-# Tabla CBA
-df_cba = pd.DataFrame(puntajes_cba, index=factores)
-df_cba.loc["IdV TOTAL"] = df_cba.sum(axis=0)
+# Cálculo de IdV total
+idv_totales = {}
+for alt in alternativas:
+    idv_totales[alt] = df_cba_editado[alt].sum()
 
-st.subheader("Tabla de resultados CBA")
-st.dataframe(df_cba, use_container_width=True)
+fila_total = pd.DataFrame({
+    "Alternativa": list(idv_totales.keys()),
+    "IdV TOTAL": list(idv_totales.values())
+})
 
-# Gráfico CBA
-df_grafico = df_cba.loc[["IdV TOTAL"]].T
-df_grafico.columns = ["Puntaje IdV"]
+st.subheader("IdV total por alternativa")
+st.dataframe(fila_total, use_container_width=True, hide_index=True)
 
-st.subheader("Gráfico de puntajes IdV por alternativa")
-st.bar_chart(df_grafico)
+st.subheader("Gráfico de puntajes IdV")
+st.bar_chart(fila_total.set_index("Alternativa"))
 
-alternativa_ganadora = df_grafico["Puntaje IdV"].idxmax()
-puntaje_cba = df_grafico["Puntaje IdV"].max()
+alternativa_ganadora = max(idv_totales, key=idv_totales.get)
+puntaje_cba = idv_totales[alternativa_ganadora]
 
 st.success(f"Alternativa ganadora según CBA: {alternativa_ganadora} con {puntaje_cba:.0f} puntos IdV.")
 
@@ -363,4 +365,3 @@ st.caption(
     "Nota: Este prototipo es una herramienta de apoyo a la toma de decisiones. "
     "Los resultados dependen de los datos ingresados por el usuario y deben interpretarse junto con el análisis técnico-financiero del proyecto."
 )
-
