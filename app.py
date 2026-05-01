@@ -25,7 +25,6 @@ def calcular_van(tasa_mensual, flujos):
     return van
 
 def calcular_tir(flujos):
-    # Nota: Para mayor precisión en producción se recomienda usar numpy_financial.irr()
     tasas = np.linspace(-0.99, 1.5, 20000)
     valores = [calcular_van(tasa, flujos) for tasa in tasas]
 
@@ -39,7 +38,7 @@ def calcular_tir(flujos):
 def interpretar_resultado(van, tir_mensual, rentabilidad, satisfaccion, puntaje_cba):
     tir_anual = ((1 + tir_mensual) ** 12 - 1) if tir_mensual is not None else None
 
-    if van > 0 and tir_anual is not None and tir_anual > 0.14 and rentabilidad >= 17 and satisfaccion >= 4 and puntaje_cba >= 70:
+    if van > 0 and tir_anual is not None and tir_anual >= 0.14 and rentabilidad >= 17.5 and satisfaccion >= 4 and puntaje_cba >= 70:
         return "Viable y recomendable", "La alternativa evaluada cumple con los criterios financieros y de satisfacción establecidos."
     elif van > 0 and rentabilidad >= 10:
         return "Viable con observaciones", "La alternativa puede aceptarse, pero requiere revisar riesgos, satisfacción o ventajas CBA."
@@ -236,13 +235,12 @@ for i in range(1, horizonte_meses + 1):
 st.divider()
 
 # -----------------------------
-# 5. Tabla de CBA (Editable y Dinámica - Estructura Word)
+# 5. Tabla de CBA (Editable y Dinámica)
 # -----------------------------
 
 st.header("5. Aplicación del Método CBA (Tabular)")
 st.info("💡 **Nota técnica:** Streamlit no soporta visualmente la combinación de celdas (merge) en tablas editables. Para mantener los cálculos exactos y no duplicar valores, el IdV solo se ingresa en la primera fila de cada factor.")
 
-# Construcción de la matriz con los 7 factores completos. 
 filas_cba = [
     # --- FACTOR 01 ---
     {
@@ -369,7 +367,6 @@ elif metodo == "Método 2: Aporte mixto":
 else: # Método 3: Financiamiento con inversionistas
     columnas_mostrar = ["Crédito Bancario", "Trad. IdV", "Aporte Inmob.", "Apor. IdV", "Fondos Invers.", "Fond. IdV"]
 
-# Filtramos el DataFrame para que solo contenga las columnas que necesitamos ver
 df_cba_visible = df_cba[columnas_base + columnas_mostrar]
 
 # Renderizar la tabla editable solo con las columnas filtradas
@@ -391,7 +388,6 @@ df_editado = st.data_editor(
     }
 )
 
-# Cálculo dinámico en tiempo real de los totales IdV asegurando que la columna exista
 totales_idv = {}
 if "Trad. IdV" in df_editado.columns:
     totales_idv["Crédito Bancario"] = df_editado["Trad. IdV"].sum()
@@ -405,7 +401,6 @@ if "Fond. IdV" in df_editado.columns:
 alternativa_ganadora = max(totales_idv, key=totales_idv.get)
 puntaje_cba = totales_idv[alternativa_ganadora]
 
-# Mostrar métricas de puntaje total debajo de la tabla adaptándose al número de métodos evaluados
 st.markdown("### Totales IdV en tiempo real")
 columnas_metricas = st.columns(len(totales_idv))
 for i, (nombre_alt, valor_idv) in enumerate(totales_idv.items()):
@@ -438,7 +433,12 @@ if st.button("Calcular resultados"):
 
         estado, recomendacion = interpretar_resultado(van, tir_mensual, rentabilidad, satisfaccion, puntaje_cba)
 
-        # TABLA DE INDICADORES (Reemplaza las métricas anteriores)
+        # Evaluaciones de "Cumple" o "No cumple"
+        eval_rentabilidad = "Cumple" if rentabilidad >= 17.5 else "No cumple"
+        eval_tir = "Cumple" if (tir_anual is not None and tir_anual >= 0.14) else "No cumple"
+        eval_van = "Cumple" if van > 0 else "No cumple"
+        eval_satisfaccion = "Cumple" if satisfaccion >= 4 else "No cumple"
+
         st.subheader("Tabla de Indicadores y Resultados")
         
         datos_tabla_resultados = {
@@ -472,16 +472,21 @@ if st.button("Calcular resultados"):
                 f"{tir_anual * 100:.1f}%" if tir_anual is not None else "N/A",
                 formato_van(van),
                 obtener_texto_likert(satisfaccion)
+            ],
+            "Evaluación": [
+                eval_rentabilidad,
+                eval_tir,
+                eval_van,
+                eval_satisfaccion
             ]
         }
         
         df_resultados = pd.DataFrame(datos_tabla_resultados)
         
-        # st.table renderiza los saltos de línea (\n) perfectamente en Streamlit
         st.table(df_resultados)
 
         st.subheader("Resultado CBA")
-        st.write(f"Alternativa ganadora: **{alternativa_ganadora}**")
+        # Se elimina la alternativa ganadora, solo queda el puntaje
         st.write(f"Puntaje CBA obtenido: **{puntaje_cba:.0f} puntos IdV**")
 
         st.subheader("Recomendación final")
@@ -501,9 +506,9 @@ if st.button("Calcular resultados"):
 
         st.markdown(
             f"""
-            **Interpretación:** Para el proyecto **{nombre_proyecto}**, ubicado en **{ubicacion}**, la aplicación del método CBA identifica como alternativa más conveniente a **{alternativa_ganadora}**, 
-            con un puntaje de **{puntaje_cba:.0f} puntos IdV**. Asimismo, el análisis financiero del **{metodo}** obtiene un VAN de **S/. {van:,.2f}**, 
-            una TIR anual de **{tir_texto}**, una rentabilidad de **{rentabilidad:.2f}%** y una satisfacción esperada de **{satisfaccion:.1f}/5**.
+            **Interpretación:** Para el proyecto **{nombre_proyecto}**, ubicado en **{ubicacion}**, la aplicación del método CBA identifica un puntaje de **{puntaje_cba:.0f} puntos IdV**. 
+            Asimismo, el análisis financiero del **{metodo}** obtiene un VAN de **S/. {van:,.2f}**, una TIR anual de **{tir_texto}**, 
+            una rentabilidad de **{rentabilidad:.2f}%** y una satisfacción esperada de **{satisfaccion:.1f}/5**.
             """
         )
 
