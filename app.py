@@ -38,12 +38,11 @@ def calcular_tir(flujos):
 def interpretar_resultado(van, tir_mensual, rentabilidad, satisfaccion, puntaje_cba):
     tir_anual = ((1 + tir_mensual) ** 12 - 1) if tir_mensual is not None else None
 
-    if van > 0 and tir_anual is not None and tir_anual >= 0.14 and rentabilidad >= 17.5 and satisfaccion >= 4 and puntaje_cba >= 70:
-        return "Viable y recomendable", "La alternativa evaluada cumple con los criterios financieros y de satisfacción establecidos."
-    elif van > 0 and rentabilidad >= 10:
-        return "Viable con observaciones", "La alternativa puede aceptarse, pero requiere revisar riesgos, satisfacción o ventajas CBA."
+    # Lógica simplificada: Cumple o no cumple con las metas de aceptación
+    if van > 0 and tir_anual is not None and tir_anual >= 0.14 and rentabilidad >= 17.5 and satisfaccion >= 4:
+        return "Viable", "Viable y cumple con los indicadores."
     else:
-        return "No recomendable", "La alternativa no cumple con los criterios mínimos de viabilidad establecidos."
+        return "No viable", "No viable. La alternativa no cumple con todas las metas de aceptación."
 
 def obtener_texto_likert(valor):
     v = round(valor)
@@ -433,7 +432,6 @@ if st.button("Calcular resultados"):
 
         estado, recomendacion = interpretar_resultado(van, tir_mensual, rentabilidad, satisfaccion, puntaje_cba)
 
-        # Evaluaciones de "Cumple" o "No cumple"
         eval_rentabilidad = "Cumple" if rentabilidad >= 17.5 else "No cumple"
         eval_tir = "Cumple" if (tir_anual is not None and tir_anual >= 0.14) else "No cumple"
         eval_van = "Cumple" if van > 0 else "No cumple"
@@ -486,14 +484,12 @@ if st.button("Calcular resultados"):
         st.table(df_resultados)
 
         st.subheader("Resultado CBA")
-        # Se elimina la alternativa ganadora, solo queda el puntaje
+        # Se elimina explícitamente el nombre de la alternativa ganadora
         st.write(f"Puntaje CBA obtenido: **{puntaje_cba:.0f} puntos IdV**")
 
         st.subheader("Recomendación final")
-        if estado == "Viable y recomendable":
+        if estado == "Viable":
             st.success(f"✅ {estado}")
-        elif estado == "Viable con observaciones":
-            st.warning(f"⚠️ {estado}")
         else:
             st.error(f"❌ {estado}")
 
