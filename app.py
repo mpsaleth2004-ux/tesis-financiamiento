@@ -295,3 +295,4 @@ data_cba = {
         "Flexibilidad media (acuerdos con compradores)",
         "No hay participación externa en las ganancias",
         "Financiamiento interno, sin intermediarios"
+    ],
