@@ -15,7 +15,7 @@ st.set_page_config(
 )
 
 # -----------------------------
-# Funciones financieras
+# Funciones financieras y de formato
 # -----------------------------
 
 def calcular_van(tasa_mensual, flujos):
@@ -46,6 +46,21 @@ def interpretar_resultado(van, tir_mensual, rentabilidad, satisfaccion, puntaje_
     else:
         return "No recomendable", "La alternativa no cumple con los criterios mínimos de viabilidad establecidos."
 
+def obtener_texto_likert(valor):
+    v = round(valor)
+    if v == 5: return "5\n(Completamente satisfecho)"
+    elif v == 4: return "4\n(Satisfecho)"
+    elif v == 3: return "3\n(Neutral)"
+    elif v == 2: return "2\n(Insatisfecho)"
+    else: return "1\n(Completamente insatisfecho)"
+
+def formato_van(van):
+    if van >= 1000000:
+        return f"+ S/{van/1000000:.1f} millones"
+    elif van <= -1000000:
+        return f"- S/{abs(van)/1000000:.1f} millones"
+    else:
+        return f"S/ {van:,.2f}"
 
 # -----------------------------
 # Encabezado
@@ -98,7 +113,7 @@ metodo = st.selectbox(
         "Método 2: Aporte mixto",
         "Método 3: Financiamiento con inversionistas"
     ],
-    index=1
+    index=0
 )
 
 st.subheader("Distribución del financiamiento")
@@ -423,19 +438,47 @@ if st.button("Calcular resultados"):
 
         estado, recomendacion = interpretar_resultado(van, tir_mensual, rentabilidad, satisfaccion, puntaje_cba)
 
-        r1, r2, r3, r4 = st.columns(4)
-
-        with r1:
-            st.metric("VAN", f"S/. {van:,.2f}")
-        with r2:
-            if tir_anual is not None:
-                st.metric("TIR anual", f"{tir_anual * 100:.2f}%")
-            else:
-                st.metric("TIR anual", "No calculable")
-        with r3:
-            st.metric("Rentabilidad", f"{rentabilidad:.2f}%")
-        with r4:
-            st.metric("Satisfacción", f"{satisfaccion:.1f}/5")
+        # TABLA DE INDICADORES (Reemplaza las métricas anteriores)
+        st.subheader("Tabla de Indicadores y Resultados")
+        
+        datos_tabla_resultados = {
+            "Tipo": ["Cuantitativo", "Cuantitativo", "Cuantitativo", "Cualitativo"],
+            "Indicador": [
+                "Nivel de Rentabilidad del proyecto",
+                "Tasa Interna de Retorno (TIR)",
+                "Valor Actual Neto (VAN)",
+                "Nivel de Satisfacción de la inmobiliaria - constructora"
+            ],
+            "Unidad de medida": [
+                "Porcentaje (%)", 
+                "Porcentaje (%)", 
+                "Miles de soles (S/)", 
+                "Escala Likert"
+            ],
+            "Rango": [
+                "(Beneficio Neto)/(Ventas reales) x 100%\n≤ 0.19",
+                "0% - 100%",
+                "VAN < 0 = No viable, VAN > 0 = Viable",
+                "5: Completamente satisfecho\n4: Satisfecho\n3: Neutral\n2: Insatisfecho\n1: Completamente insatisfecho"
+            ],
+            "Meta de aceptación": [
+                "0.175\n(17.5%)\nMonteza (2024)",
+                "≥ 14%\nMonteza (2024)",
+                "VAN > 0\nKaufmann, et al., (2022)",
+                "Satisfecho\nKaufmann, et al., (2022)"
+            ],
+            f'"{metodo}"': [
+                f"{rentabilidad:.1f}%",
+                f"{tir_anual * 100:.1f}%" if tir_anual is not None else "N/A",
+                formato_van(van),
+                obtener_texto_likert(satisfaccion)
+            ]
+        }
+        
+        df_resultados = pd.DataFrame(datos_tabla_resultados)
+        
+        # st.table renderiza los saltos de línea (\n) perfectamente en Streamlit
+        st.table(df_resultados)
 
         st.subheader("Resultado CBA")
         st.write(f"Alternativa ganadora: **{alternativa_ganadora}**")
