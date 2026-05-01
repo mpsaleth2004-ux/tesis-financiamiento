@@ -294,4 +294,4 @@ data_cba = {
         "Entradas de clientes: 30% del precio como reserva/anticipo",
         "Flexibilidad media (acuerdos con compradores)",
         "No hay participación externa en las ganancias",
-        "Financiamiento interno, sin intermediarios
+        "Financiamiento interno, sin intermediarios"
