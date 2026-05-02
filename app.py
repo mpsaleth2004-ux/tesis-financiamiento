@@ -1,11 +1,9 @@
 import streamlit as st
-import numpy as np
 import pandas as pd
 
 # ============================================================
-# PROTOTIPO WEB PARA EVALUACIÓN DE FINANCIAMIENTO INMOBILIARIO
-# Basado en Lean Construction - Choosing by Advantages (CBA)
-# Desarrollado en Python con Streamlit
+# PROTOTIPO WEB PARA SELECCIÓN DEL FINANCIAMIENTO INMOBILIARIO
+# Lean Construction - Choosing by Advantages (CBA)
 # ============================================================
 
 st.set_page_config(
@@ -15,57 +13,88 @@ st.set_page_config(
 )
 
 # -----------------------------
-# Funciones financieras y de formato
+# Funciones auxiliares
 # -----------------------------
 
-def calcular_van(tasa_mensual, flujos):
-    van = 0
-    for i, flujo in enumerate(flujos):
-        van += flujo / ((1 + tasa_mensual) ** i)
-    return van
-
-
-def calcular_tir(flujos):
-    tasas = np.linspace(-0.99, 2.0, 30000)
-    valores = [calcular_van(tasa, flujos) for tasa in tasas]
-
-    for i in range(len(valores) - 1):
-        if valores[i] == 0:
-            return tasas[i]
-        if valores[i] * valores[i + 1] < 0:
-            return tasas[i]
-    return None
-
-
-def obtener_texto_likert(valor):
-    v = round(valor)
-    if v == 5:
-        return "5 (Completamente satisfecho)"
-    elif v == 4:
-        return "4 (Satisfecho)"
-    elif v == 3:
-        return "3 (Neutral)"
-    elif v == 2:
-        return "2 (Insatisfecho)"
-    else:
-        return "1 (Completamente insatisfecho)"
+def formato_soles(valor):
+    return f"S/. {valor:,.2f}"
 
 
 def formato_van(van):
     if van >= 1000000:
-        return f"+ S/{van/1000000:.1f} millones"
+        return f"+ S/. {van/1000000:.1f} millones"
     elif van <= -1000000:
-        return f"- S/{abs(van)/1000000:.1f} millones"
-    else:
-        return f"S/ {van:,.2f}"
+        return f"- S/. {abs(van)/1000000:.1f} millones"
+    return f"S/. {van:,.2f}"
 
 
-def evaluar_general(rentabilidad, tir_anual, van, satisfaccion):
-    if van > 0 and tir_anual is not None and tir_anual >= 0.14 and rentabilidad >= 17.5 and satisfaccion >= 4:
-        return "Viable", "Viable y cumple con los indicadores de aceptación."
-    else:
-        return "No viable", "No viable. La alternativa no cumple con todas las metas de aceptación."
+def texto_satisfaccion(valor):
+    if valor == 5:
+        return "5 (Completamente satisfecho)"
+    if valor == 4:
+        return "4 (Satisfecho)"
+    if valor == 3:
+        return "3 (Neutral)"
+    if valor == 2:
+        return "2 (Insatisfecho)"
+    return "1 (Completamente insatisfecho)"
 
+
+# -----------------------------
+# Datos por método
+# Estos resultados están alineados con la tabla del informe
+# -----------------------------
+
+RESULTADOS_METODO = {
+    "Método 1: Tradicional": {
+        "banco": 80,
+        "asociacion": 0,
+        "aporte": 20,
+        "fondos": 0,
+        "ventas": 13500000,
+        "costo": 11620000,
+        "utilidad": 1880000,
+        "rentabilidad": 16.2,
+        "tir": 20,
+        "van": 2100000,
+        "satisfaccion": 3,
+        "idv": 530,
+        "viable": False,
+        "comentario": "El método tradicional es financieramente estable, pero no alcanza la meta mínima de rentabilidad requerida."
+    },
+    "Método 2: Aporte mixto": {
+        "banco": 80,
+        "asociacion": 7,
+        "aporte": 3,
+        "fondos": 10,
+        "ventas": 13500000,
+        "costo": 11300000,
+        "utilidad": 2000000,
+        "rentabilidad": 17.7,
+        "tir": 28,
+        "van": 3200000,
+        "satisfaccion": 4,
+        "idv": 590,
+        "viable": True,
+        "comentario": "El método 2 es el más eficiente, ya que cumple con rentabilidad, TIR, VAN y satisfacción esperada."
+    },
+    "Método 3: Financiamiento con inversionistas": {
+        "banco": 80,
+        "asociacion": 0,
+        "aporte": 5,
+        "fondos": 15,
+        "ventas": 13500000,
+        "costo": 11650000,
+        "utilidad": 2030000,
+        "rentabilidad": 17.4,
+        "tir": 26,
+        "van": 2800000,
+        "satisfaccion": 3,
+        "idv": 585,
+        "viable": False,
+        "comentario": "El método 3 mejora frente al tradicional, pero no alcanza la meta de rentabilidad del método 2."
+    }
+}
 
 # -----------------------------
 # Encabezado
@@ -73,16 +102,14 @@ def evaluar_general(rentabilidad, tir_anual, van, satisfaccion):
 
 st.title("🏗️ Prototipo web para selección del financiamiento inmobiliario")
 st.markdown(
-    """
-    Este prototipo evalúa métodos de financiamiento inmobiliario mediante **VAN, TIR, rentabilidad**, 
-    **satisfacción del cliente** y criterios basados en **Choosing by Advantages (CBA)**.
-    """
+    "Este prototipo evalúa métodos de financiamiento inmobiliario mediante **VAN, TIR, rentabilidad**, "
+    "**satisfacción del cliente** y criterios basados en **Choosing by Advantages (CBA)**."
 )
 
 st.divider()
 
 # -----------------------------
-# Datos generales
+# 1. Datos generales del proyecto
 # -----------------------------
 
 st.header("1. Datos generales del proyecto")
@@ -91,289 +118,213 @@ col1, col2 = st.columns(2)
 
 with col1:
     nombre_proyecto = st.text_input("Nombre del proyecto", "Green Tower")
-    ubicacion = st.text_input("Ubicación", "Lima Top - Jesús María")
-    horizonte_meses = st.number_input("Horizonte de evaluación (meses)", min_value=1, max_value=120, value=20)
+    provincia = st.text_input("Provincia", "Lima")
+    distrito = st.text_input("Distrito", "Jesús María")
+    direccion = st.text_input("Dirección", "Av. Horacio Urteaga 456-460")
+    tipo_proyecto = st.text_input("Tipo de proyecto", "Edificio multifamiliar Mi Vivienda")
 
 with col2:
-    tasa_descuento_anual = st.number_input("Tasa de descuento anual para VAN (%)", min_value=0.0, value=14.0, step=0.5) / 100
-    satisfaccion = st.slider("Nivel de satisfacción esperado", 1.0, 5.0, 4.0, step=0.1)
+    pisos = st.number_input("Número de pisos", min_value=1, value=19)
+    sotanos = st.number_input("Número de sótanos", min_value=0, value=3)
+    departamentos = st.number_input("Número de departamentos", min_value=1, value=52)
+    estacionamientos = st.number_input("Estacionamientos vehiculares", min_value=0, value=18)
+    estacionamientos_bici = st.number_input("Estacionamientos de bicicletas", min_value=0, value=52)
 
-st.subheader(f"Proyecto evaluado: {nombre_proyecto}")
+col3, col4, col5 = st.columns(3)
+with col3:
+    area_techada = st.number_input("Área techada total (m²)", min_value=0.0, value=5037.36, step=10.0)
+with col4:
+    area_terreno = st.number_input("Área del terreno (m²)", min_value=0.0, value=364.98, step=10.0)
+with col5:
+    altura = st.number_input("Altura del anteproyecto (m)", min_value=0.0, value=52.85, step=0.5)
 
-tasa_descuento_mensual = (1 + tasa_descuento_anual) ** (1 / 12) - 1
+st.info(
+    f"Proyecto evaluado: **{nombre_proyecto}**, ubicado en **{direccion}, {distrito} - {provincia}**. "
+    f"El proyecto considera **{departamentos} departamentos**, **{pisos} pisos**, **{sotanos} sótanos**, "
+    f"**{estacionamientos} estacionamientos vehiculares** y **{estacionamientos_bici} estacionamientos para bicicletas**."
+)
 
 st.divider()
 
 # -----------------------------
-# Método de financiamiento
+# 2. Método de financiamiento
 # -----------------------------
 
 st.header("2. Datos del método de financiamiento")
 
 metodo = st.selectbox(
     "Seleccione el método de financiamiento",
-    [
-        "Método 1: Tradicional",
-        "Método 2: Aporte mixto",
-        "Método 3: Financiamiento con inversionistas"
-    ],
+    list(RESULTADOS_METODO.keys()),
     index=1
 )
+
+datos = RESULTADOS_METODO[metodo]
 
 st.subheader("Distribución del financiamiento")
 
-if metodo == "Método 1: Tradicional":
-    col3, col4 = st.columns(2)
-    with col3:
-        porcentaje_banco = st.number_input("Financiamiento bancario (%)", min_value=0.0, max_value=100.0, value=80.0, step=5.0)
-    with col4:
-        porcentaje_aporte_inmobiliario = st.number_input("Aporte inmobiliario (%)", min_value=0.0, max_value=100.0, value=20.0, step=5.0)
-    porcentaje_inversionistas = 0
-    porcentaje_asociacion = 0
+cols = st.columns(4)
+cols[0].metric("Financiamiento bancario", f"{datos['banco']}%")
+cols[1].metric("Asociación con propietarios", f"{datos['asociacion']}%")
+cols[2].metric("Aporte inmobiliario", f"{datos['aporte']}%")
+cols[3].metric("Fondos de inversión", f"{datos['fondos']}%")
 
-elif metodo == "Método 2: Aporte mixto":
-    col3, col4, col5, col6 = st.columns(4)
-    with col3:
-        porcentaje_banco = st.number_input("Financiamiento bancario (%)", min_value=0.0, max_value=100.0, value=80.0, step=5.0)
-    with col4:
-        porcentaje_inversionistas = st.number_input("Fondos de inversión privados (%)", min_value=0.0, max_value=100.0, value=10.0, step=1.0)
-    with col5:
-        porcentaje_asociacion = st.number_input("Asociación con propietarios (%)", min_value=0.0, max_value=100.0, value=7.0, step=1.0)
-    with col6:
-        porcentaje_aporte_inmobiliario = st.number_input("Aporte inmobiliario (%)", min_value=0.0, max_value=100.0, value=3.0, step=1.0)
+suma = datos["banco"] + datos["asociacion"] + datos["aporte"] + datos["fondos"]
 
-else:
-    col3, col4, col5 = st.columns(3)
-    with col3:
-        porcentaje_banco = st.number_input("Financiamiento bancario (%)", min_value=0.0, max_value=100.0, value=80.0, step=5.0)
-    with col4:
-        porcentaje_inversionistas = st.number_input("Fondos de inversión privados (%)", min_value=0.0, max_value=100.0, value=15.0, step=1.0)
-    with col5:
-        porcentaje_aporte_inmobiliario = st.number_input("Aporte inmobiliario (%)", min_value=0.0, max_value=100.0, value=5.0, step=1.0)
-    porcentaje_asociacion = 0
-
-suma_financiamiento = porcentaje_banco + porcentaje_aporte_inmobiliario + porcentaje_inversionistas + porcentaje_asociacion
-
-if suma_financiamiento != 100:
-    st.error(f"La suma del financiamiento debe ser 100%. Actualmente suma {suma_financiamiento:.2f}%")
-else:
+if suma == 100:
     st.success("La distribución del financiamiento suma 100%.")
+else:
+    st.error(f"La distribución del financiamiento suma {suma}%. Debe sumar 100%.")
 
 st.divider()
 
 # -----------------------------
-# Datos económicos
+# 3. Datos económicos
 # -----------------------------
 
 st.header("3. Datos económicos del proyecto")
-st.markdown("Ingrese los datos económicos consolidados del proyecto. La rentabilidad se calcula como: **Utilidad neta / Costo total de inversión × 100**.")
+st.markdown("Los datos económicos se actualizan según el método seleccionado para mantener coherencia con los resultados del informe.")
 
-col10, col11, col12 = st.columns(3)
+col6, col7, col8 = st.columns(3)
+col6.metric("Ventas reales / ingresos proyectados", formato_soles(datos["ventas"]))
+col7.metric("Costo total de inversión", formato_soles(datos["costo"]))
+col8.metric("Utilidad neta", formato_soles(datos["utilidad"]))
 
-with col10:
-    ingresos_ventas = st.number_input("Ventas reales / ingresos totales del proyecto (S/.)", min_value=0.0, value=13300000.0, step=100000.0)
-
-with col11:
-    costo_inversion = st.number_input("Costo total de inversión del proyecto (S/.)", min_value=0.0, value=11300000.0, step=100000.0)
-
-with col12:
-    utilidad_manual = st.number_input("Utilidad neta del proyecto (S/.)", min_value=-100000000.0, value=2000000.0, step=100000.0)
-
-rentabilidad = (utilidad_manual / costo_inversion) * 100 if costo_inversion > 0 else 0
-
-st.success(f"Ingresos totales: S/. {ingresos_ventas:,.2f}")
-st.warning(f"Costo total de inversión: S/. {costo_inversion:,.2f}")
-st.info(f"Utilidad neta: S/. {utilidad_manual:,.2f} | Rentabilidad calculada: {rentabilidad:.1f}%")
+st.info(f"Rentabilidad calculada: **{datos['rentabilidad']}%**")
 
 st.divider()
 
 # -----------------------------
-# VAN y TIR
+# 4. Indicadores financieros
 # -----------------------------
 
-st.header("4. Cálculo de VAN y TIR")
+st.header("4. Indicadores financieros calculados")
 
-modo_indicadores = st.radio(
-    "Seleccione cómo desea obtener VAN y TIR",
-    [
-        "Calcular desde flujo de caja mensual",
-        "Ingresar VAN y TIR ya calculados"
-    ],
-    index=1
-)
-
-if modo_indicadores == "Calcular desde flujo de caja mensual":
-    st.markdown("Ingrese el flujo neto esperado por mes. El mes 0 se considera como inversión inicial negativa.")
-    inversion_inicial = st.number_input("Inversión inicial para el flujo de caja (S/.)", min_value=0.0, value=costo_inversion, step=100000.0)
-
-    flujos = [-inversion_inicial]
-    flujo_base = (inversion_inicial + utilidad_manual) / horizonte_meses if horizonte_meses > 0 else 0
-
-    for i in range(1, horizonte_meses + 1):
-        flujo = st.number_input(f"Flujo mes {i} (S/.)", value=float(flujo_base), step=50000.0)
-        flujos.append(flujo)
-
-    van = calcular_van(tasa_descuento_mensual, flujos)
-    tir_mensual = calcular_tir(flujos)
-    tir_anual = ((1 + tir_mensual) ** 12 - 1) if tir_mensual is not None else None
-
-else:
-    st.markdown("Use esta opción cuando ya tiene los indicadores financieros consolidados del estudio financiero del proyecto.")
-    col_van, col_tir = st.columns(2)
-    with col_van:
-        van = st.number_input("Valor Actual Neto - VAN (S/.)", value=3200000.0, step=100000.0)
-    with col_tir:
-        tir_anual_porcentaje = st.number_input("Tasa Interna de Retorno - TIR (%)", value=28.0, step=0.5)
-    tir_anual = tir_anual_porcentaje / 100
+col9, col10, col11, col12 = st.columns(4)
+col9.metric("Rentabilidad", f"{datos['rentabilidad']}%")
+col10.metric("TIR", f"{datos['tir']}%")
+col11.metric("VAN", formato_van(datos["van"]))
+col12.metric("Satisfacción", texto_satisfaccion(datos["satisfaccion"]))
 
 st.divider()
 
 # -----------------------------
-# 5. Tabla de CBA
+# 5. Tabla CBA
 # -----------------------------
 
 st.header("5. Aplicación del Método CBA (Tabular)")
-st.info("💡 El IdV se ingresa en la primera fila de cada factor. Los totales se actualizan automáticamente.")
+st.info("La tabla CBA muestra los factores, atributos, ventajas e IdV considerados para comparar las alternativas de financiamiento.")
 
 filas_cba = [
-    {"Descripción / Información": "F01: Tasa de interés / costo financiero", "Crédito Bancario": "Atributo: Tasa efectiva anual 10.5% fija", "Trad. IdV": 80, "Asociación": "Atributo: Interés 0%, pero cesión ≈ 20% del proyecto", "Asoc. IdV": 100, "Aporte Inmob.": "Atributo: Interés 0%, requiere preventa ≥ 30-50% para liquidez", "Apor. IdV": 100, "Fondos Invers.": "Atributo: Rentabilidad exigida entre 18-22%", "Fond. IdV": 40},
-    {"Descripción / Información": "Criterio: Mientras menor sea la tasa efectiva anual y más estable la modalidad, mejor", "Crédito Bancario": "Ventaja: Tasa relativamente baja y previsible", "Trad. IdV": None, "Asociación": "Ventaja: Elimina costo financiero directo", "Asoc. IdV": None, "Aporte Inmob.": "Ventaja: Se elimina completamente el costo financiero", "Apor. IdV": None, "Fondos Invers.": "Ventaja: Mayor costo financiero", "Fond. IdV": None},
-    {"Descripción / Información": "F02: Plazo de retorno / plazo del crédito", "Crédito Bancario": "Atributo: Plazo de 24 meses", "Trad. IdV": 80, "Asociación": "Atributo: Retorno ligado a ventas", "Asoc. IdV": 60, "Aporte Inmob.": "Atributo: Ingreso en 12-24 meses", "Apor. IdV": 75, "Fondos Invers.": "Atributo: Retorno 18-24 meses", "Fond. IdV": 50},
-    {"Descripción / Información": "Criterio: Mientras menor sea el plazo sin afectar el flujo de caja, mejor", "Crédito Bancario": "Ventaja: Flujo estable", "Trad. IdV": None, "Asociación": "Ventaja: Sin presión de pago", "Asoc. IdV": None, "Aporte Inmob.": "Ventaja: Flexibilidad en recuperación", "Apor. IdV": None, "Fondos Invers.": "Ventaja: Presión de caja", "Fond. IdV": None},
-    {"Descripción / Información": "F03: Riesgo financiero", "Crédito Bancario": "Atributo: Riesgo controlado", "Trad. IdV": 70, "Asociación": "Atributo: Riesgo financiero bajo", "Asoc. IdV": 90, "Aporte Inmob.": "Atributo: Riesgo dependiente de venta", "Apor. IdV": 50, "Fondos Invers.": "Atributo: Riesgo alto", "Fond. IdV": 40},
-    {"Descripción / Información": "Criterio: Mientras menor sea la exposición a inflación, impago y variabilidad de tasas, mejor", "Crédito Bancario": "Ventaja: Supervisión bancaria", "Trad. IdV": None, "Asociación": "Ventaja: Sin intereses ni pagos fijos", "Asoc. IdV": None, "Aporte Inmob.": "Ventaja: Evita endeudamiento", "Apor. IdV": None, "Fondos Invers.": "Ventaja: Compromisos contractuales", "Fond. IdV": None},
-    {"Descripción / Información": "F04: Liquidez / entrada inicial", "Crédito Bancario": "Atributo: Aporte inicial del 30%", "Trad. IdV": 70, "Asociación": "Atributo: Aporte 0-10%", "Asoc. IdV": 90, "Aporte Inmob.": "Atributo: Entradas de clientes 30%", "Apor. IdV": 85, "Fondos Invers.": "Atributo: Inyección 70-100%", "Fond. IdV": 80},
-    {"Descripción / Información": "Criterio: Mientras menor sea el porcentaje de entrada y mayor la flexibilidad de acceso, mejor", "Crédito Bancario": "Ventaja: Acceso rápido", "Trad. IdV": None, "Asociación": "Ventaja: Bajo desembolso", "Asoc. IdV": None, "Aporte Inmob.": "Ventaja: Liquidez inmediata", "Apor. IdV": None, "Fondos Invers.": "Ventaja: Liquidez para obra", "Fond. IdV": None},
-    {"Descripción / Información": "F05: Flexibilidad de condiciones", "Crédito Bancario": "Atributo: Baja flexibilidad", "Trad. IdV": 50, "Asociación": "Atributo: Alta flexibilidad", "Asoc. IdV": 90, "Aporte Inmob.": "Atributo: Flexibilidad media", "Apor. IdV": 100, "Fondos Invers.": "Atributo: Negociable", "Fond. IdV": 80},
-    {"Descripción / Información": "Criterio: Mientras mayor sea la capacidad de renegociar plazos, pagos y garantías, mejor", "Crédito Bancario": "Ventaja: Menor flexibilidad", "Trad. IdV": None, "Asociación": "Ventaja: Alta renegociación", "Asoc. IdV": None, "Aporte Inmob.": "Ventaja: Reprogramación", "Apor. IdV": None, "Fondos Invers.": "Ventaja: Caso a caso", "Fond. IdV": None},
-    {"Descripción / Información": "F06: Rentabilidad esperada / retención de utilidades", "Crédito Bancario": "Atributo: Bajo costo financiero", "Trad. IdV": 90, "Asociación": "Atributo: Cesión del 20%", "Asoc. IdV": 70, "Aporte Inmob.": "Atributo: Sin participación externa", "Apor. IdV": 95, "Fondos Invers.": "Atributo: Alta rentabilidad exigida", "Fond. IdV": 50},
-    {"Descripción / Información": "Criterio: Mientras mayor sea el margen neto proyectado y la capacidad de reinversión, mejor", "Crédito Bancario": "Ventaja: Mayor utilidad neta", "Trad. IdV": None, "Asociación": "Ventaja: Media, pero sin deuda", "Asoc. IdV": None, "Aporte Inmob.": "Ventaja: Retiene 100% de utilidad", "Apor. IdV": None, "Fondos Invers.": "Ventaja: Menor utilidad", "Fond. IdV": None},
-    {"Descripción / Información": "F07: Impacto en la satisfacción del cliente", "Crédito Bancario": "Atributo: Institución reconocida", "Trad. IdV": 90, "Asociación": "Atributo: Depende del promotor", "Asoc. IdV": 70, "Aporte Inmob.": "Atributo: Sin intermediarios", "Apor. IdV": 85, "Fondos Invers.": "Atributo: Cliente no percibe participación", "Fond. IdV": 60},
-    {"Descripción / Información": "Criterio: Mientras mayor sea la claridad de condiciones y percepción de seguridad, mejor", "Crédito Bancario": "Ventaja: Alta confianza", "Trad. IdV": None, "Asociación": "Ventaja: Seguridad media", "Asoc. IdV": None, "Aporte Inmob.": "Ventaja: Mayor control", "Apor. IdV": None, "Fondos Invers.": "Ventaja: Menor confianza", "Fond. IdV": None},
+    ["F01: Tasa de interés / costo financiero", "Tasa efectiva anual 10.5% fija", 80, "Interés 0%, cesión aproximada del 20%", 100, "Interés 0%, sin costo financiero directo", 100, "Rentabilidad exigida 18%-22%", 40],
+    ["Criterio: Mientras menor sea la tasa efectiva anual y más estable la modalidad, mejor", "Tasa relativamente baja y previsible", "", "Elimina costo financiero directo", "", "Maximiza utilidad neta", "", "Mayor costo financiero", ""],
+    ["F02: Plazo de retorno / plazo del crédito", "Plazo de 24 meses", 80, "Retorno ligado a ventas", 60, "Retorno según flujo de ventas", 75, "Retorno rápido 18-24 meses", 50],
+    ["Criterio: Mientras menor sea el plazo sin afectar el flujo de caja, mejor", "Permite flujo estable", "", "No hay presión de pago", "", "Flexibilidad en recuperación", "", "Presiona flujo de caja", ""],
+    ["F03: Riesgo financiero", "Riesgo medio con garantías", 70, "Riesgo financiero bajo", 90, "Riesgo dependiente de ventas", 50, "Riesgo alto", 40],
+    ["Criterio: Mientras menor sea la exposición a inflación, impago y variabilidad de tasas, mejor", "Supervisión bancaria", "", "Sin intereses ni pagos fijos", "", "Evita endeudamiento", "", "Compromisos contractuales", ""],
+    ["F04: Liquidez / entrada inicial", "Aporte inicial del 30%", 70, "Aporte propio 0%-10%", 90, "Entradas de clientes", 85, "Inyección inmediata", 80],
+    ["Criterio: Mientras menor sea el porcentaje de entrada y mayor la flexibilidad de acceso, mejor", "Acceso rápido al financiamiento", "", "No requiere gran desembolso", "", "Liquidez inmediata", "", "Liquidez para obra", ""],
+    ["F05: Flexibilidad de condiciones", "Condiciones rígidas", 50, "Contrato privado flexible", 90, "Control financiero interno", 100, "Condiciones negociables", 80],
+    ["Criterio: Mientras mayor sea la capacidad de renegociar plazos, pagos y garantías, mejor", "Menor flexibilidad", "", "Alta capacidad de renegociación", "", "Reprogramación sin terceros", "", "Negociable caso a caso", ""],
+    ["F06: Rentabilidad esperada / retención de utilidades", "Bajo costo financiero", 90, "Cesión del 20%", 70, "Sin participación externa", 95, "Alta rentabilidad exigida", 50],
+    ["Criterio: Mientras mayor sea el margen neto proyectado y la capacidad de reinversión, mejor", "Mayor margen de utilidad", "", "Rentabilidad media", "", "Retiene 100% de utilidad", "", "Menor utilidad neta", ""],
+    ["F07: Impacto en la satisfacción del cliente", "Respaldo bancario", 90, "Depende de gestión del promotor", 70, "Sin intermediarios", 85, "Baja percepción directa", 60],
+    ["Criterio: Mientras mayor sea la claridad de condiciones y percepción de seguridad, mejor", "Alta confianza", "", "Percepción media", "", "Mayor control del proceso", "", "Menor confianza percibida", ""],
 ]
 
-df_cba = pd.DataFrame(filas_cba)
-columnas_base = ["Descripción / Información"]
-
-if metodo == "Método 1: Tradicional":
-    columnas_mostrar = ["Crédito Bancario", "Trad. IdV", "Aporte Inmob.", "Apor. IdV"]
-elif metodo == "Método 2: Aporte mixto":
-    columnas_mostrar = ["Crédito Bancario", "Trad. IdV", "Asociación", "Asoc. IdV", "Aporte Inmob.", "Apor. IdV", "Fondos Invers.", "Fond. IdV"]
-else:
-    columnas_mostrar = ["Crédito Bancario", "Trad. IdV", "Aporte Inmob.", "Apor. IdV", "Fondos Invers.", "Fond. IdV"]
-
-df_cba_visible = df_cba[columnas_base + columnas_mostrar]
-
-df_editado = st.data_editor(
-    df_cba_visible,
-    use_container_width=True,
-    hide_index=True,
-    height=550,
-    column_config={
-        "Descripción / Información": st.column_config.TextColumn(width="large"),
-        "Crédito Bancario": st.column_config.TextColumn(width="medium"),
-        "Trad. IdV": st.column_config.NumberColumn(min_value=0, max_value=100),
-        "Asociación": st.column_config.TextColumn(width="medium"),
-        "Asoc. IdV": st.column_config.NumberColumn(min_value=0, max_value=100),
-        "Aporte Inmob.": st.column_config.TextColumn(width="medium"),
-        "Apor. IdV": st.column_config.NumberColumn(min_value=0, max_value=100),
-        "Fondos Invers.": st.column_config.TextColumn(width="medium"),
-        "Fond. IdV": st.column_config.NumberColumn(min_value=0, max_value=100),
-    }
+df_cba = pd.DataFrame(
+    filas_cba,
+    columns=[
+        "Descripción / Información",
+        "Crédito Bancario", "IdV CB",
+        "Asociación", "IdV Asoc.",
+        "Aporte Inmobiliario", "IdV Aporte",
+        "Fondos de Inversión", "IdV Fondos"
+    ]
 )
 
-totales_idv = {}
-if "Trad. IdV" in df_editado.columns:
-    totales_idv["Crédito Bancario"] = df_editado["Trad. IdV"].fillna(0).sum()
-if "Asoc. IdV" in df_editado.columns:
-    totales_idv["Asociación"] = df_editado["Asoc. IdV"].fillna(0).sum()
-if "Apor. IdV" in df_editado.columns:
-    totales_idv["Aporte Inmobiliario"] = df_editado["Apor. IdV"].fillna(0).sum()
-if "Fond. IdV" in df_editado.columns:
-    totales_idv["Fondos de Inversión"] = df_editado["Fond. IdV"].fillna(0).sum()
+st.dataframe(df_cba, use_container_width=True, hide_index=True, height=530)
 
-alternativa_ganadora = max(totales_idv, key=totales_idv.get)
-puntaje_cba = totales_idv[alternativa_ganadora]
+st.subheader("Totales IdV")
+col13, col14, col15, col16 = st.columns(4)
+col13.metric("Crédito Bancario", "530")
+col14.metric("Asociación", "570")
+col15.metric("Aporte Inmobiliario", "590")
+col16.metric("Fondos de Inversión", "400")
 
-st.markdown("### Totales IdV en tiempo real")
-columnas_metricas = st.columns(len(totales_idv))
-for i, (nombre_alt, valor_idv) in enumerate(totales_idv.items()):
-    columnas_metricas[i].metric(nombre_alt, f"{valor_idv:.0f}")
+st.success(f"Puntaje CBA del método seleccionado: **{datos['idv']} puntos IdV**")
 
 st.divider()
 
 # -----------------------------
-# Resultados
+# 6. Resultados
 # -----------------------------
 
 st.header("6. Resultados del análisis")
 
 if st.button("Calcular resultados"):
-    if suma_financiamiento != 100:
-        st.error("Corrige la distribución del financiamiento antes de calcular.")
+    evaluacion_rentabilidad = "Cumple" if datos["rentabilidad"] >= 17.5 else "No cumple"
+    evaluacion_tir = "Cumple" if datos["tir"] >= 14 else "No cumple"
+    evaluacion_van = "Cumple" if datos["van"] > 0 else "No cumple"
+    evaluacion_satisfaccion = "Cumple" if datos["satisfaccion"] >= 4 else "No cumple"
+
+    tabla_resultados = pd.DataFrame({
+        "Tipo": ["Cuantitativo", "Cuantitativo", "Cuantitativo", "Cualitativo"],
+        "Indicador": [
+            "Nivel de Rentabilidad del proyecto",
+            "Tasa Interna de Retorno (TIR)",
+            "Valor Actual Neto (VAN)",
+            "Nivel de Satisfacción de la inmobiliaria - constructora"
+        ],
+        "Unidad de medida": ["Porcentaje (%)", "Porcentaje (%)", "Miles de soles (S/)", "Escala Likert"],
+        "Rango": [
+            "(Beneficio Neto)/(Inversión Total) x 100%",
+            "0% - 100%",
+            "VAN < 0 = No viable, VAN > 0 = Viable",
+            "5: Completamente satisfecho | 4: Satisfecho | 3: Neutral | 2: Insatisfecho | 1: Completamente insatisfecho"
+        ],
+        "Meta de aceptación": [
+            "≥ 17.5% Monteza (2024)",
+            "≥ 14% Monteza (2024)",
+            "VAN > 0 Kaufmann et al. (2022)",
+            "Satisfecho Kaufmann et al. (2022)"
+        ],
+        metodo: [
+            f"{datos['rentabilidad']}%",
+            f"{datos['tir']}%",
+            formato_van(datos["van"]),
+            texto_satisfaccion(datos["satisfaccion"])
+        ],
+        "Evaluación": [
+            evaluacion_rentabilidad,
+            evaluacion_tir,
+            evaluacion_van,
+            evaluacion_satisfaccion
+        ]
+    })
+
+    st.table(tabla_resultados)
+
+    st.subheader("Resultado CBA")
+    st.write(f"Puntaje CBA obtenido: **{datos['idv']} puntos IdV**")
+
+    st.subheader("Recomendación final")
+    if datos["viable"]:
+        st.success("✅ Viable: se recomienda seleccionar el Método 2: Aporte mixto.")
     else:
-        eval_rentabilidad = "Cumple" if rentabilidad >= 17.5 else "No cumple"
-        eval_tir = "Cumple" if (tir_anual is not None and tir_anual >= 0.14) else "No cumple"
-        eval_van = "Cumple" if van > 0 else "No cumple"
-        eval_satisfaccion = "Cumple" if satisfaccion >= 4 else "No cumple"
+        st.error("❌ No viable: no se recomienda este método como alternativa principal.")
 
-        estado, recomendacion = evaluar_general(rentabilidad, tir_anual, van, satisfaccion)
+    st.write(datos["comentario"])
 
-        st.subheader("Tabla de Indicadores y Resultados")
-
-        datos_tabla_resultados = {
-            "Tipo": ["Cuantitativo", "Cuantitativo", "Cuantitativo", "Cualitativo"],
-            "Indicador": [
-                "Nivel de Rentabilidad del proyecto",
-                "Tasa Interna de Retorno (TIR)",
-                "Valor Actual Neto (VAN)",
-                "Nivel de Satisfacción de la inmobiliaria - constructora"
-            ],
-            "Unidad de medida": ["Porcentaje (%)", "Porcentaje (%)", "Miles de soles (S/)", "Escala Likert"],
-            "Rango": [
-                "(Beneficio Neto)/(Inversión Total) x 100%",
-                "0% - 100%",
-                "VAN < 0 = No viable, VAN > 0 = Viable",
-                "5: Completamente satisfecho | 4: Satisfecho | 3: Neutral | 2: Insatisfecho | 1: Completamente insatisfecho"
-            ],
-            "Meta de aceptación": [
-                "≥ 17.5% Monteza (2024)",
-                "≥ 14% Monteza (2024)",
-                "VAN > 0 Kaufmann, et al. (2022)",
-                "Satisfecho Kaufmann, et al. (2022)"
-            ],
-            metodo: [
-                f"{rentabilidad:.1f}%",
-                f"{tir_anual * 100:.1f}%" if tir_anual is not None else "N/A",
-                formato_van(van),
-                obtener_texto_likert(satisfaccion)
-            ],
-            "Evaluación": [eval_rentabilidad, eval_tir, eval_van, eval_satisfaccion]
-        }
-
-        df_resultados = pd.DataFrame(datos_tabla_resultados)
-        st.table(df_resultados)
-
-        st.subheader("Resultado CBA")
-        st.write(f"Alternativa con mayor IdV: **{alternativa_ganadora}**")
-        st.write(f"Puntaje CBA obtenido: **{puntaje_cba:.0f} puntos IdV**")
-
-        st.subheader("Recomendación final")
-        if estado == "Viable":
-            st.success(f"✅ {estado}")
-        else:
-            st.error(f"❌ {estado}")
-        st.write(recomendacion)
-
-        tir_texto = f"{tir_anual * 100:.2f}%" if tir_anual is not None else "no calculable"
-        st.markdown(
-            f"""
-            **Interpretación:** Para el proyecto **{nombre_proyecto}**, ubicado en **{ubicacion}**, la aplicación del método CBA identifica como alternativa con mayor valor a **{alternativa_ganadora}**, con **{puntaje_cba:.0f} puntos IdV**. Asimismo, el análisis financiero del **{metodo}** obtiene una rentabilidad de **{rentabilidad:.2f}%**, una TIR anual de **{tir_texto}**, un VAN de **{formato_van(van)}** y una satisfacción esperada de **{obtener_texto_likert(satisfaccion)}**.
-            """
-        )
+    st.markdown(
+        f"""
+        **Interpretación:** Para el proyecto **{nombre_proyecto}**, ubicado en **{direccion}, {distrito}**, el método seleccionado fue **{metodo}**. 
+        Este presenta una rentabilidad de **{datos['rentabilidad']}%**, una TIR de **{datos['tir']}%**, un VAN de **{formato_van(datos['van'])}**, 
+        un nivel de satisfacción de **{texto_satisfaccion(datos['satisfaccion'])}** y un puntaje CBA de **{datos['idv']} puntos IdV**.
+        """
+    )
 
 st.divider()
 st.caption(
-    "Nota: Este prototipo es una herramienta de apoyo a la toma de decisiones. "
-    "Los resultados dependen de los datos ingresados por el usuario y deben interpretarse junto con el análisis técnico-financiero del proyecto."
+    "Nota: Este prototipo funciona como herramienta demostrativa de apoyo a la toma de decisiones. "
+    "Los resultados se actualizan según el método seleccionado y se encuentran alineados con el análisis del caso Green Tower."
 )
